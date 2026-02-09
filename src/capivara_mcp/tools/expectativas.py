@@ -9,7 +9,34 @@ from bcb import Expectativas
 
 
 # Mapeamento de indicadores aceitos
-_INDICADORES = {"Selic", "IPCA", "PIB", "Câmbio"}
+_INDICADORES = {
+    "Balança comercial",
+    "Câmbio",
+    "Conta corrente",
+    "Dívida bruta do governo geral",
+    "Dívida líquida do setor público",
+    "IGP-M",
+    "Investimento direto no país",
+    "IPCA",
+    "IPCA Administrados",
+    "IPCA Alimentação no domicílio",
+    "IPCA Bens industrializados",
+    "IPCA Livres",
+    "IPCA Serviços",
+    "PIB Agropecuária",
+    "PIB Despesa de consumo da administração pública",
+    "PIB Despesa de consumo das famílias",
+    "PIB Exportação de bens e serviços",
+    "PIB Formação Bruta de Capital Fixo",
+    "PIB Importação de bens e serviços",
+    "PIB Indústria",
+    "PIB Serviços",
+    "PIB Total",
+    "Resultado nominal",
+    "Resultado primário",
+    "Selic",
+    "Taxa de desocupação",
+}
 
 
 def get_expectativas_mercado(
@@ -23,7 +50,8 @@ def get_expectativas_mercado(
     Dados obtidos da API de Expectativas do BCB.
 
     Args:
-        indicador: Indicador econômico: "Selic", "IPCA", "PIB" ou "Câmbio". Padrão: "Selic".
+        indicador: Indicador econômico. Exemplos: "Selic", "IPCA", "PIB Total", "Câmbio",
+            "IGP-M", "Taxa de desocupação", "Balança comercial", entre outros. Padrão: "Selic".
         top: Número de últimas expectativas a retornar. Padrão: 5.
 
     Returns:
