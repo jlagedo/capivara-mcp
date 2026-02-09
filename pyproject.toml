@@ -1,0 +1,15 @@
+[project]
+name = "capivara-mcp"
+version = "0.1.0"
+description = "MCP server para dados do mercado financeiro brasileiro — PTAX, Selic, IPCA, Focus e mais, direto do Banco Central"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]",
+    "python-bcb",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
