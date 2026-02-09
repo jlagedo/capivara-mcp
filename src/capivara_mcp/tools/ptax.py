@@ -3,10 +3,33 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date, timedelta
 
+import httpx
 import pandas as pd
 from bcb import PTAX
+
+from capivara_mcp.tools._validation import erro_json, parse_date, validate_date_range
+
+logger = logging.getLogger("capivara-mcp.ptax")
+
+_MAX_DAYS = 365
+
+
+def _fetch_ptax(moeda: str, dt_inicio: date, dt_fim: date) -> pd.DataFrame:
+    """Busca cotações PTAX na API do BCB."""
+    ptax = PTAX()
+    ep = ptax.get_endpoint("CotacaoMoedaPeriodo")
+    return (
+        ep.query()
+        .parameters(
+            moeda=moeda,
+            dataInicial=dt_inicio.strftime("%m-%d-%Y"),
+            dataFinalCotacao=dt_fim.strftime("%m-%d-%Y"),
+        )
+        .collect()
+    )
 
 
 def get_ptax(
@@ -27,23 +50,32 @@ def get_ptax(
     Returns:
         JSON com as cotações de compra e venda no período.
     """
+    logger.info("get_ptax chamado: moeda=%s, data_inicio=%s, data_fim=%s", moeda, data_inicio, data_fim)
+
     hoje = date.today()
-    dt_fim = date.fromisoformat(data_fim) if data_fim else hoje
-    dt_inicio = date.fromisoformat(data_inicio) if data_inicio else dt_fim - timedelta(days=30)
+
+    if data_fim:
+        parsed = parse_date(data_fim, "data_fim")
+        if isinstance(parsed, str):
+            return parsed
+        dt_fim = parsed
+    else:
+        dt_fim = hoje
+
+    if data_inicio:
+        parsed = parse_date(data_inicio, "data_inicio")
+        if isinstance(parsed, str):
+            return parsed
+        dt_inicio = parsed
+    else:
+        dt_inicio = dt_fim - timedelta(days=30)
+
+    range_err = validate_date_range(dt_inicio, dt_fim, _MAX_DAYS)
+    if range_err:
+        return range_err
 
     try:
-        ptax = PTAX()
-        ep = ptax.get_endpoint("CotacaoMoedaPeriodo")
-
-        df: pd.DataFrame = (
-            ep.query()
-            .parameters(
-                moeda=moeda,
-                dataInicial=dt_inicio.strftime("%m-%d-%Y"),
-                dataFinalCotacao=dt_fim.strftime("%m-%d-%Y"),
-            )
-            .collect()
-        )
+        df: pd.DataFrame = _fetch_ptax(moeda, dt_inicio, dt_fim)
 
         if df.empty:
             return json.dumps(
@@ -59,7 +91,7 @@ def get_ptax(
             "tipoBoletim": "tipo_boletim",
         }
         colunas_existentes = {k: v for k, v in colunas.items() if k in df.columns}
-        df = df[list(colunas_existentes.keys())].rename(columns=colunas_existentes)
+        df = df[list(colunas_existentes.keys())].rename(columns=colunas_existentes)  # type: ignore[call-overload]  # pandas rename typing
 
         # Converter datetime para string ISO
         for col in df.columns:
@@ -72,5 +104,10 @@ def get_ptax(
             ensure_ascii=False,
         )
 
-    except Exception as e:
-        return json.dumps({"erro": f"Erro ao consultar PTAX: {e}"}, ensure_ascii=False)
+    except httpx.TimeoutException:
+        return erro_json("Tempo limite excedido ao consultar a API PTAX do BCB. Tente novamente.")
+    except httpx.ConnectError:
+        return erro_json("Não foi possível conectar à API PTAX do BCB. Verifique sua conexão.")
+    except Exception:
+        logger.exception("Erro ao consultar PTAX: moeda=%s", moeda)
+        return erro_json(f"Erro inesperado ao consultar PTAX para {moeda}. Verifique os parâmetros.")

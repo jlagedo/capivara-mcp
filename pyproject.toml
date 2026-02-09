@@ -10,6 +10,49 @@ dependencies = [
     "python-bcb",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+]
+dev = [
+    "ruff>=0.8",
+    "pyright>=1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: hits real BCB API (deselect with '-m not integration')",
+]
+asyncio_mode = "auto"
+
+[project.scripts]
+capivara-mcp = "capivara_mcp.server:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+]
+
+[tool.pyright]
+pythonVersion = "3.11"
+pythonPlatform = "All"
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"

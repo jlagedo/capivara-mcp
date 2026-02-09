@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:olinda.bcb.gov.br)"
+      "WebFetch(domain:olinda.bcb.gov.br)",
+      "Bash(xargs ls:*)",
+      "Bash(python -c:*)",
+      "Bash(uv sync:*)",
+      "Bash(capivara-mcp --help:*)",
+      "Bash(timeout 2 capivara-mcp:*)",
+      "Bash(echo:*)",
+      "Bash(python3:*)",
+      "Bash(uv pip show:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(uv run ruff check:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run pyright:*)"
     ]
   }
 }

@@ -1,11 +1,19 @@
 """Tool para consulta de expectativas de mercado (Focus) do Banco Central."""
 
+# pyright: reportAttributeAccessIssue=false
+
 from __future__ import annotations
 
 import json
+import logging
 
+import httpx
 import pandas as pd
 from bcb import Expectativas
+
+from capivara_mcp.tools._validation import erro_json
+
+logger = logging.getLogger("capivara-mcp.expectativas")
 
 
 # Mapeamento de indicadores aceitos
@@ -39,6 +47,28 @@ _INDICADORES = {
 }
 
 
+def _fetch_expectativas(indicador: str, top: int) -> pd.DataFrame:
+    """Busca expectativas de mercado na API do BCB."""
+    em = Expectativas()
+    ep = em.get_endpoint("ExpectativasMercadoAnuais")
+    return (
+        ep.query()
+        .filter(ep.Indicador == indicador, ep.baseCalculo == 0)
+        .orderby(ep.Data.desc())
+        .select(
+            ep.Indicador,
+            ep.Data,
+            ep.DataReferencia,
+            ep.Media,
+            ep.Mediana,
+            ep.Minimo,
+            ep.Maximo,
+        )
+        .limit(top)
+        .collect()
+    )
+
+
 def get_expectativas_mercado(
     indicador: str = "Selic",
     top: int = 5,
@@ -57,32 +87,13 @@ def get_expectativas_mercado(
     Returns:
         JSON com as expectativas de mercado para o indicador.
     """
+    logger.info("get_expectativas_mercado chamado: indicador=%s, top=%d", indicador, top)
+
     if indicador not in _INDICADORES:
-        return json.dumps(
-            {"erro": f"Indicador '{indicador}' não suportado. Use: {', '.join(sorted(_INDICADORES))}."},
-            ensure_ascii=False,
-        )
+        return erro_json(f"Indicador '{indicador}' não suportado. Use: {', '.join(sorted(_INDICADORES))}.")
 
     try:
-        em = Expectativas()
-        ep = em.get_endpoint("ExpectativasMercadoAnuais")
-
-        df: pd.DataFrame = (
-            ep.query()
-            .filter(ep.Indicador == indicador, ep.baseCalculo == 0)
-            .orderby(ep.Data.desc())
-            .select(
-                ep.Indicador,
-                ep.Data,
-                ep.DataReferencia,
-                ep.Media,
-                ep.Mediana,
-                ep.Minimo,
-                ep.Maximo,
-            )
-            .limit(top)
-            .collect()
-        )
+        df: pd.DataFrame = _fetch_expectativas(indicador, top)
 
         if df.empty:
             return json.dumps(
@@ -113,8 +124,10 @@ def get_expectativas_mercado(
             ensure_ascii=False,
         )
 
-    except Exception as e:
-        return json.dumps(
-            {"erro": f"Erro ao consultar expectativas de {indicador}: {e}"},
-            ensure_ascii=False,
-        )
+    except httpx.TimeoutException:
+        return erro_json(f"Tempo limite excedido ao consultar expectativas de {indicador}. Tente novamente.")
+    except httpx.ConnectError:
+        return erro_json("Não foi possível conectar à API de Expectativas do BCB. Verifique sua conexão.")
+    except Exception:
+        logger.exception("Erro ao consultar expectativas: indicador=%s", indicador)
+        return erro_json(f"Erro inesperado ao consultar expectativas de {indicador}. Verifique os parâmetros.")
