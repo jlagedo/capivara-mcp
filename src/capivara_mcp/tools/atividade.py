@@ -1,4 +1,4 @@
-"""Tool para consulta de índices de inflação e taxas de referência do Banco Central."""
+"""Tool para consulta de indicadores de atividade econômica do Banco Central."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from bcb import sgs
 
 from capivara_mcp.tools._validation import erro_json, parse_date, validate_date_range
 
-logger = logging.getLogger("capivara-mcp.inflacao")
+logger = logging.getLogger("capivara-mcp.atividade")
 
 _MAX_DAYS = 1825  # ~5 anos (dados mensais)
 _API_TIMEOUT_SECONDS = 30
@@ -22,50 +22,48 @@ _API_TIMEOUT_SECONDS = 30
 
 # Códigos das séries no SGS
 _SERIES = {
-    "IPCA": 433,
-    "IGP-M": 189,
-    "CDI": 12,
-    "IPCA-15": 7478,
-    "INPC": 188,
+    "PIB mensal": 4380,
+    "Dívida bruta/PIB": 4513,
+    "Resultado primário": 5793,
 }
 
 
-def _fetch_inflacao(indice: str, codigo: int, dt_inicio: date, dt_fim: date) -> pd.DataFrame:
-    """Busca índice de inflação na API SGS do BCB."""
+def _fetch_atividade(indicador: str, codigo: int, dt_inicio: date, dt_fim: date) -> pd.DataFrame:
+    """Busca indicador de atividade econômica na API SGS do BCB."""
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(
             sgs.get,
-            {indice: codigo},
+            {indicador: codigo},
             start=dt_inicio.strftime("%Y-%m-%d"),
             end=dt_fim.strftime("%Y-%m-%d"),
         )
-        return future.result(timeout=_API_TIMEOUT_SECONDS)  # type: ignore[return-value]  # sgs.get returns DataFrame for dict input
+        return future.result(timeout=_API_TIMEOUT_SECONDS)  # type: ignore[return-value]
 
 
-def get_inflacao(
-    indice: str = "IPCA",
+def get_atividade_economica(
+    indicador: str = "PIB mensal",
     data_inicio: str | None = None,
     data_fim: str | None = None,
 ) -> str:
-    """Consulta índices de inflação e taxas de referência do Banco Central do Brasil.
+    """Consulta indicadores de atividade econômica do Banco Central do Brasil.
 
-    Retorna os valores mensais do índice escolhido para o período.
+    Retorna os valores mensais do indicador escolhido para o período.
     Dados obtidos do SGS (Sistema Gerenciador de Séries Temporais) do BCB.
 
     Args:
-        indice: Índice desejado: "IPCA", "IGP-M", "CDI", "IPCA-15" ou "INPC". Padrão: "IPCA".
+        indicador: Indicador desejado: "PIB mensal", "Dívida bruta/PIB" ou "Resultado primário".
+            Padrão: "PIB mensal".
         data_inicio: Data inicial no formato YYYY-MM-DD. Padrão: 365 dias atrás.
         data_fim: Data final no formato YYYY-MM-DD. Padrão: hoje.
 
     Returns:
-        JSON com os valores mensais do índice no período.
+        JSON com os valores mensais do indicador no período.
     """
-    logger.info("get_inflacao chamado: indice=%s, data_inicio=%s, data_fim=%s", indice, data_inicio, data_fim)
+    logger.info("get_atividade_economica chamado: indicador=%s, data_inicio=%s, data_fim=%s", indicador, data_inicio, data_fim)
 
-    indice_upper = indice.upper()
-    if indice_upper not in _SERIES:
+    if indicador not in _SERIES:
         return json.dumps(
-            {"erro": f"Índice '{indice}' não suportado. Use: {', '.join(sorted(_SERIES))}."},
+            {"erro": f"Indicador '{indicador}' não suportado. Use: {', '.join(sorted(_SERIES))}."},
             ensure_ascii=False,
         )
 
@@ -92,12 +90,12 @@ def get_inflacao(
         return range_err
 
     try:
-        codigo = _SERIES[indice_upper]
-        df: pd.DataFrame = _fetch_inflacao(indice_upper, codigo, dt_inicio, dt_fim)
+        codigo = _SERIES[indicador]
+        df: pd.DataFrame = _fetch_atividade(indicador, codigo, dt_inicio, dt_fim)
 
         if df.empty:
             return json.dumps(
-                {"erro": f"Nenhum dado de {indice_upper} encontrado no período informado."},
+                {"erro": f"Nenhum dado de {indicador} encontrado no período informado."},
                 ensure_ascii=False,
             )
 
@@ -108,7 +106,7 @@ def get_inflacao(
         registros = df.to_dict(orient="records")
         return json.dumps(
             {
-                "indice": indice_upper,
+                "indicador": indicador,
                 "periodo": {"inicio": str(dt_inicio), "fim": str(dt_fim)},
                 "valores": registros,
             },
@@ -116,9 +114,9 @@ def get_inflacao(
         )
 
     except FuturesTimeoutError:
-        return erro_json(f"Tempo limite excedido ao consultar {indice_upper} na API do BCB. Tente novamente.")
+        return erro_json(f"Tempo limite excedido ao consultar {indicador} na API do BCB. Tente novamente.")
     except requests.ConnectionError:
         return erro_json("Não foi possível conectar à API do BCB. Verifique sua conexão.")
     except Exception:
-        logger.exception("Erro ao consultar inflação: indice=%s", indice_upper)
-        return erro_json(f"Erro inesperado ao consultar {indice_upper}. Verifique os parâmetros.")
+        logger.exception("Erro ao consultar atividade econômica: indicador=%s", indicador)
+        return erro_json(f"Erro inesperado ao consultar {indicador}. Verifique os parâmetros.")

@@ -35,11 +35,49 @@ class TestGetInflacaoSuccess:
         assert len(data["valores"]) == 2
 
     @patch(_PATCH)
+    def test_cdi_success(self, mock_fetch):
+        mock_fetch.return_value = make_sgs_df({"CDI": 0.1}, n=3)
+        result = get_inflacao(indice="CDI", data_inicio="2025-01-02", data_fim="2025-03-01")
+        data = json.loads(result)
+        assert data["indice"] == "CDI"
+        assert len(data["valores"]) == 3
+
+    @patch(_PATCH)
+    def test_ipca15_success(self, mock_fetch):
+        mock_fetch.return_value = make_sgs_df({"IPCA-15": 0.4}, n=2)
+        result = get_inflacao(indice="IPCA-15", data_inicio="2025-01-02", data_fim="2025-03-01")
+        data = json.loads(result)
+        assert data["indice"] == "IPCA-15"
+        assert len(data["valores"]) == 2
+
+    @patch(_PATCH)
+    def test_inpc_success(self, mock_fetch):
+        mock_fetch.return_value = make_sgs_df({"INPC": 0.35}, n=2)
+        result = get_inflacao(indice="INPC", data_inicio="2025-01-02", data_fim="2025-03-01")
+        data = json.loads(result)
+        assert data["indice"] == "INPC"
+        assert len(data["valores"]) == 2
+
+    @patch(_PATCH)
     def test_case_insensitive_indice(self, mock_fetch):
         mock_fetch.return_value = make_sgs_df({"IPCA": 0.5}, n=1)
         result = get_inflacao(indice="ipca", data_inicio="2025-01-02", data_fim="2025-03-01")
         data = json.loads(result)
         assert data["indice"] == "IPCA"
+
+    @patch(_PATCH)
+    def test_case_insensitive_cdi(self, mock_fetch):
+        mock_fetch.return_value = make_sgs_df({"CDI": 0.1}, n=1)
+        result = get_inflacao(indice="cdi", data_inicio="2025-01-02", data_fim="2025-03-01")
+        data = json.loads(result)
+        assert data["indice"] == "CDI"
+
+    @patch(_PATCH)
+    def test_case_insensitive_inpc(self, mock_fetch):
+        mock_fetch.return_value = make_sgs_df({"INPC": 0.3}, n=1)
+        result = get_inflacao(indice="inpc", data_inicio="2025-01-02", data_fim="2025-03-01")
+        data = json.loads(result)
+        assert data["indice"] == "INPC"
 
     @patch(_PATCH)
     def test_records_have_expected_keys(self, mock_fetch):

@@ -28,7 +28,13 @@ async def test_list_tools_returns_all_four(server_params):
                 "get_ptax",
                 "get_selic",
                 "get_inflacao",
+                "get_atividade_economica",
                 "get_expectativas_mercado",
+                "get_expectativas_mensais",
+                "get_expectativas_selic",
+                "get_expectativas_inflacao12m",
+                "get_expectativas_top5",
+                "get_taxa_juros",
             }
 
 
